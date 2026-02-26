@@ -1,6 +1,4 @@
-﻿import dynamic from 'next/dynamic';
-
-const RMKCrm = dynamic(() => import('../components/RmkCrmUI'), { ssr: false });
+﻿import RMKCrm from '../components/RmkCrmUI';
 
 export default function Home() {
   return <RMKCrm />;
