@@ -1,11 +1,24 @@
-import { supabaseAdmin, err, serverError, verifyZapierSecret } from '@/lib/supabase'
+﻿import { supabaseAdmin, err, serverError } from '@/lib/supabase'
 
 export async function POST(req: Request) {
   try {
-    if (!verifyZapierSecret(req)) return err('Unauthorized', 401)
+    const body = await req.json()
 
-    const { email } = await req.json()
-    if (!email?.from || !email?.subject) return err('from and subject are required')
+    // Zapier는 flat 구조로 보냄 (email__from, email__subject 등)
+    // body에서 zapier_secret 검증
+    const secret = body.zapier_secret
+    if (secret !== process.env.ZAPIER_WEBHOOK_SECRET) {
+      return err('Unauthorized', 401)
+    }
+
+    // flat 구조 파싱
+    const from = body.email__from || body.email?.from
+    const fromName = body.email__from_name || body.email?.from_name
+    const subject = body.email__subject || body.email?.subject
+    const emailBody = body.email__body || body.email?.body
+    const receivedAt = body.email__received_at || body.email?.received_at
+
+    if (!from || !subject) return err('from and subject are required')
 
     // 거래처 매칭 또는 생성
     let companyId: string | null = null
@@ -14,7 +27,7 @@ export async function POST(req: Request) {
     const { data: existing } = await supabaseAdmin
       .from('companies')
       .select('id')
-      .eq('email', email.from)
+      .eq('email', from)
       .single()
 
     if (existing) {
@@ -22,7 +35,7 @@ export async function POST(req: Request) {
     } else {
       const { data: newCompany } = await supabaseAdmin
         .from('companies')
-        .insert({ name: email.from_name || email.from, email: email.from })
+        .insert({ name: fromName || from, email: from })
         .select()
         .single()
       companyId = newCompany?.id || null
@@ -33,10 +46,12 @@ export async function POST(req: Request) {
     const { data: deal, error: dealError } = await supabaseAdmin
       .from('deals')
       .insert({
-        subject: email.subject,
+        subject: subject,
         company_id: companyId,
         stage: 'inquiry_received',
-        first_contact_date: email.received_at?.split('T')[0] || new Date().toISOString().split('T')[0]
+        first_contact_date: receivedAt
+          ? new Date(receivedAt).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0]
       })
       .select()
       .single()
@@ -47,9 +62,9 @@ export async function POST(req: Request) {
     await supabaseAdmin.from('activities').insert({
       deal_id: deal.id,
       type: 'email_received',
-      content: email.body || email.subject,
+      content: emailBody || subject,
       ai_summary: null,
-      from_label: email.from_name || email.from
+      from_label: fromName || from
     })
 
     return Response.json({
