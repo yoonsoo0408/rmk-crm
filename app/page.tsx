@@ -1,4 +1,6 @@
-﻿import RMKCrm from '../components/RmkCrmUI';
+"use client";
+
+import RMKCrm from "@/components/RmkCrm";
 
 export default function Home() {
   return <RMKCrm />;
