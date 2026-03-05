@@ -8,7 +8,7 @@ const supabase = createClient(
 );
 
 const STAGES = [
-  { id: "inquiry_received", label: "문의 접수", color: "#6B7280" },
+  { id: "inquiry_received", label: "문의 접수", color: "#6B72h80" },
   { id: "quote_preparing",  label: "견적 작성",  color: "#3B82F6" },
   { id: "quote_submitted",  label: "견적 발송",  color: "#8B5CF6" },
   { id: "negotiating",      label: "협상 중",    color: "#F59E0B" },
@@ -36,7 +36,7 @@ function mapDeal(row) {
     contactName: row.companies?.contact_name ?? null,
     client: row.clients?.name ?? "—",
     assignee: row.users?.name ?? null,
-    amount: row.total_amount ?? 0,
+    amount: parseFloat(row.amount) || 0,
     currency: row.currency ?? "USD",
     product: row.product ?? "—",
     importance: row.importance ?? 3,
